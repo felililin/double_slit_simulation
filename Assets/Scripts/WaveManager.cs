@@ -12,7 +12,7 @@ public class WaveManager : MonoBehaviour
 
     float Lx = 10; // wave width
     float Ly = 10; // wave height
-    [SerializeField] float dx = 0.01f; // x density
+    public float dx = 0.01f; // x density
     float dy { get => dx; } // y density
     int nx, ny; // resolution
 
@@ -25,14 +25,13 @@ public class WaveManager : MonoBehaviour
     [SerializeField] Vector2Int pulsePosition = new Vector2Int(50, 50);
     [SerializeField] float elasticity = 0.98f; // how long before the wave disipates
     public int slitY, slitX1, slitX2;
+    public int slitWidth; // sebisa mungkin ganjil
     
     // Start is called before the first frame update
     void Start()
     {
         nx = Mathf.FloorToInt(Lx / dx);
         ny = Mathf.FloorToInt(Ly / dy);
-        print(nx);
-        print(ny);
         waveTexture = new Texture2D(nx, ny, TextureFormat.RGBA32, false);
 
         waveN = new float[nx][];
@@ -72,7 +71,7 @@ public class WaveManager : MonoBehaviour
         for(int i=1; i<nx - 1; i++) { // do not process edges
             for (int j=1; j<ny-1; j++) {
                 if (j == slitY) {
-                    if (!(i == slitX1 || i == slitX2)) continue;
+                    if (!isWithinSlit(i)) continue;
                 }
                 float n_ij = waveN[i][j];
                 float n_ip1j = waveN[i+1][j];
@@ -96,6 +95,22 @@ public class WaveManager : MonoBehaviour
         tex.Apply();
     }
 
+    bool isWithinSlit(int x) {
+        int firstSlitLowerBoundary = slitX1 - (slitWidth / 2);
+        int firstSlitUpperBoundary = slitX1 + (slitWidth / 2);
+        if (x >= firstSlitLowerBoundary && x <= firstSlitUpperBoundary) {
+            return true;
+        }
+
+        int secondSlitLowerBoundary = slitX2 - (slitWidth / 2);
+        int secondSlitUpperBoundary = slitX2 + (slitWidth / 2);
+        if (x >= secondSlitLowerBoundary && x <= secondSlitUpperBoundary) {
+            return true;
+        }
+
+        return false;
+    }
+
     void ApplyReflectiveBoundary() {
         for (int i=0; i<nx; i++) {
             waveN[i][0] = 0f;
@@ -109,7 +124,7 @@ public class WaveManager : MonoBehaviour
 
         for (int i=0;i<nx;i++) {
             // y, x
-            if ((i == slitX1 || i == slitX2)) continue;
+            if (isWithinSlit(i)) continue;
             waveN[i][slitY] = 0f;
         }
 
@@ -134,16 +149,6 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    void OnCollisionEnter(Collision collision)
-    {
-        foreach (ContactPoint contact in collision.contacts)
-        {
-            print(contact.thisCollider.name + " hit " + contact.normal);
-            // Visualize the contact point
-            Debug.DrawRay(contact.point, contact.normal, Color.white);
-        }
-    }
-
     void MousePositionOnTexture(ref Vector2Int pos) {
         RaycastHit hit;
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -157,5 +162,20 @@ public class WaveManager : MonoBehaviour
         MousePositionOnTexture(ref pulsePosition);
         WaveStep();
         ApplyMatrixToTexture(waveN, ref waveTexture);
+    }
+
+    public void ResetWave() {
+        nx = Mathf.FloorToInt(Lx / dx);
+        ny = Mathf.FloorToInt(Ly / dy);
+
+        waveN = new float[nx][];
+        waveNm1 = new float[nx][];
+        waveNp1 = new float[nx][];
+
+        for (int i=0; i<nx; i++) {
+            waveN[i] = new float[ny];
+            waveNp1[i] = new float[ny];
+            waveNm1[i] = new float[ny];
+        }
     }
 }
